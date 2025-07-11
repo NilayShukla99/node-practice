@@ -12,6 +12,7 @@
   "git repository": "https://github.com/NilayShukla99/node-practice/tree/main/youtube%20clone",
   "description": "",
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
   }
 }

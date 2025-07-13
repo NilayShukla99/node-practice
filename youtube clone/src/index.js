@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import mongoose, { connect } from "mongoose";
 import express from 'express';
 import connectDB from "./db/connection.js";
+import { app } from './app.js';
 
 // `-r (preloads) the dotenv/config file` @package.json
 dotenv.config({
@@ -15,7 +16,20 @@ dotenv.config({
     // }
 })
 
-connectDB();
+connectDB()
+    .then(() => {
+        app.on('error', err => {
+            console.error('App is unable to connect the DB: ', err)
+        });
+
+        const port = process.env.PORT || 8080;
+        app.listen(port, () => {
+            console.log(`Server is running on port: `, port);
+        });
+    })
+    .catch(err => {
+        console.error(`DB connection failed!`);
+    });
 
 /* 
 // for practice purpose

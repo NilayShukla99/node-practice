@@ -5,7 +5,7 @@ import mongoose, { connect } from "mongoose";
 import express from 'express';
 import connectDB from "./db/connection.js";
 import { app } from './app.js';
-
+// import multer from './middleWares/multer.middleware.js'
 // `-r (preloads) the dotenv/config file` @package.json
 dotenv.config({
     path: '.env',
@@ -15,7 +15,6 @@ dotenv.config({
     //     DB_URL: ''
     // }
 })
-
 connectDB()
     .then(() => {
         app.on('error', err => {

@@ -2,8 +2,8 @@ class APIError extends Error {
 
     constructor (
         statusCode,
-        errors = [],
         message = 'Something went wrong',
+        errors = [],
         stackTrace = ''
     ) {
         super(message) // calling parent class constructor

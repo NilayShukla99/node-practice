@@ -11,7 +11,7 @@ const userSchema = new Schema({
         trim: true,
         index: true
     },
-    userName: {
+    email: {
         type: String,
         required: true,
         unique: true,
@@ -30,24 +30,20 @@ const userSchema = new Schema({
     coverImage: {
         type: String
     },
-    watchHistory: {
-        type: Schema.Types.ObjectId,
-        ref: 'Video'
-    },
+    watchHistory: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
     password: {
         type: String,
         required: [true, 'password is required'],
         trim: true
     },
     refreshToken: {
-        type: String,
-        required: true
+        type: String
     }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
-    bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 10);
     next();
 });
 
@@ -55,7 +51,7 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.isPasswordCorrect = async function (pwd) {
     return await bcrypt.compare(pwd, this.password)
 }
-userSchema.methods.generateAccessToken = async function () {
+userSchema.methods.generateAccessToken = function () {
     return jwt.sign({
         _id: this._id,
         email: this.email,
@@ -65,7 +61,7 @@ userSchema.methods.generateAccessToken = async function () {
         'algorithm': 'HS256'
     })
 }
-userSchema.methods.generateRefreshToken = async function () {
+userSchema.methods.generateRefreshToken = function () {
     return jwt.sign({
         _id: this._id
     }, process.env.REFRESH_TOKEN_SECRET, {

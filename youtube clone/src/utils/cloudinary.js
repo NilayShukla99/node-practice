@@ -19,16 +19,19 @@ const uploadFileToCloudinary = async localFileURL => {
                 resource_type: 'auto'
             }
         )
-        .then(() => {
+        .then(res => {
             fs.unlinkSync(localFileURL)
+            return res;
         })
         .catch((error) => {
             console.log('@cloudinary error: ', error);
         });
 
         console.log('@cloudinary uploadResult: ', uploadResult);
+        return uploadResult;
     } catch (error) {
         fs.unlinkSync(localFileURL)
+        return null;
     }
 }
 

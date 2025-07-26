@@ -3,9 +3,11 @@ import APIError from '../utils/APIError.js'
 import APIResponse from '../utils/APIResponse.js'
 import { User } from '../models/user.model.js'
 import { uploadFileToCloudinary } from '../utils/cloudinary.js'
+import jwt from 'jsonwebtoken'
 
 
 const cookieOpt = { httpOnly: true, secure: true };
+const jwtOpt = { 'algorithm': ['HS256'] }
 
 const registerUser = asyncHandler(async (req, res) => {
 
@@ -84,7 +86,9 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
+
     // data gathering
+    if (!req.body) throw new APIError(400, 'Required data missing')
     const { userName, email, password } = req.body;
     
     // validation
@@ -103,41 +107,73 @@ const loginUser = asyncHandler(async (req, res) => {
     if (!user) throw new APIError(400, 'User not found')
 
     // validate password
-    const isValidUser = user.isPasswordCorrect(password);
+    const isValidUser = await user.isPasswordCorrect(password);
+    console.log('isValidUSer: ', isValidUser)
 
     if (isValidUser) {
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
-        // user.accessToken = accessToken
         user.refreshToken = refreshToken
         user.save({ validate: false })
         
-        // set cookies
-        res.cookie('accessToken', accessToken, cookieOpt);
-        res.cookie('refreshToken', refreshToken, cookieOpt);
-
         // response
         const responseUser = user.toObject()
         delete responseUser['password']
-        res.status(200).json(new APIResponse(200, responseUser, 'User logged in successfully'))
+        res
+            .status(200)
+            .cookie('accessToken', accessToken, cookieOpt)
+            .cookie('refreshToken', refreshToken, cookieOpt)
+            .json(new APIResponse(200, responseUser, 'User logged in successfully'))
     }
+    throw new APIError(401, 'Bad Credentials')
 });
 const logoutUser = asyncHandler(async (req, res) => {
     // get the user from jwt
-    const userId = req.user._id;
+    const userId = req.user?._id;
     
-    // remove from the DB
-    const user = await User.findByIdAndUpdate(userId, {
-        $set: { refreshToken: null }
-    }, {
-        new: true
-    });
-    // clear cookies 
-    res
-        .status(200)
-        .clearCookie('accessToken', cookieOpt)
-        .clearCookie('refreshToken', cookieOpt)
-        .json(new APIResponse(200, {}, 'User logged out'))
+    if (userId) {
+        // remove from the DB
+        const user = await User.findByIdAndUpdate(userId, {
+            $set: { refreshToken: null }
+        }, {
+            new: true
+        });
+        // clear cookies 
+        res.clearCookie('accessToken', cookieOpt)
+        res.clearCookie('refreshToken', cookieOpt)
+        return res
+            .status(200)
+            .json(new APIResponse(200, {}, 'User logged out'))
+    }
+    throw new APIError(500, 'User Id is missing')
 });
 
-export { registerUser, loginUser, logoutUser }
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const refTokenFromClient = req.cookies.refreshToken || req.body.refreshToken;
+    if (!refTokenFromClient) {
+        throw new APIError(401, 'Unauthorized')
+    }
+    const decodedToken = jwt.verify(refTokenFromClient, process.env.REFRESH_TOKEN_SECRET, jwtOpt)
+    const user = await User.findById(decodedToken._id)
+
+    if (!user) throw new APIError(401, 'Invalid refresh token')
+    if (
+        refTokenFromClient === user?.refreshToken
+    ) {
+        const newAccessToken = user.generateAccessToken()
+        const newRefreshToken = user.generateRefreshToken()
+        // response
+        const responseUser = user.toObject()
+        delete responseUser['password']
+        delete responseUser['refreshToken']
+        return res
+            .status(200)
+            .cookie('accessToken', newAccessToken, cookieOpt)
+            .cookie('refreshToken', newRefreshToken, cookieOpt)
+            .json(new APIResponse(200, responseUser, 'Tokens refreshed'))
+    } else {
+        throw new APIError(401, 'Refresh token is expired or used')
+    }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken }

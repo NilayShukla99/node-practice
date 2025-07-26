@@ -1,5 +1,5 @@
-import APIError from "../utils/APIError"
-import { asyncHandler } from "../utils/asyncHandler"
+import { asyncHandler } from "../utils/asyncHandler.js"
+import APIError from "../utils/APIError.js"
 import jwt from 'jsonwebtoken'
 
 export const authenticate = asyncHandler(async (req, res, next) => {
@@ -16,7 +16,7 @@ export const authenticate = asyncHandler(async (req, res, next) => {
             if (err.name === 'TokenExpiredError') throw new APIError(401, 'Access token has expired')
             throw new APIError(403, 'Access token is not valid')
         }
-        res.user = user;
+        req.user = user;
         next()
     })
      // similar to res.user = decodedTokenOrUser
